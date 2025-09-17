@@ -12,6 +12,10 @@ export function refreshDiagnostics(
   doc: vscode.TextDocument,
   jsonataDiagnostics: vscode.DiagnosticCollection,
 ): void {
+  if (doc.languageId !== 'jsonata') {
+    return;
+  }
+
   const diagnostics: vscode.Diagnostic[] = [];
 
   const code = doc.getText();
