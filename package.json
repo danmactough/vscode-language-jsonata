@@ -1,21 +1,44 @@
 {
-  "name": "vscode-language-jsonata",
-  "displayName": "VSCode Language JSONata",
-  "description": "Language support for JSONata",
+  "name": "vscode-language-jsonata-enhanced",
+  "displayName": "VSCode Language JSONata Enhanced",
+  "description": "Language support for JSONata with enhanced support for syntax highlighting - A fork of the original vscode-language-jsonata extension",
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.64.0"
   },
   "repository": {
-    "url": "https://github.com/bigbug/vscode-language-jsonata"
+    "type": "git",
+    "url": "https://github.com/danmactough/vscode-language-jsonata.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danmactough/vscode-language-jsonata/issues"
   },
   "author": {
-    "name": "@bigbug",
-    "url": "https://github.com/bigbug"
+    "name": "Dan MacTough",
+    "url": "https://github.com/danmactough"
   },
-  "publisher": "bigbug",
+  "contributors": [
+    {
+      "name": "@bigbug",
+      "url": "https://github.com/bigbug"
+    }
+  ],
+  "homepage": "https://github.com/danmactough/vscode-language-jsonata",
+  "license": "MIT",
+  "icon": "images/jsonata-button.png",
+  "publisher": "danmactough",
   "categories": [
+    "Programming Languages",
+    "Linters",
     "Other"
+  ],
+  "keywords": [
+    "jsonata",
+    "autocomplete",
+    "syntax",
+    "highlight",
+    "notebook",
+    "linter"
   ],
   "activationEvents": [
     "onNotebook:jsonata-book",
