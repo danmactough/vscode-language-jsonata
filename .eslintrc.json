@@ -2,14 +2,16 @@
   "root": true,
   "parser": "@typescript-eslint/parser",
   "extends": [
-    "airbnb-base"
+    "airbnb-base",
+    "plugin:json/recommended-legacy"
   ],
   "parserOptions": {
     "ecmaVersion": 6,
     "sourceType": "module"
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "json"
   ],
   "rules": {
     "@typescript-eslint/naming-convention": "warn",
@@ -21,6 +23,17 @@
     "import/no-unresolved": "off",
     "import/extensions": "off"
   },
+  "overrides": [
+    {
+      "files": [
+        "tsconfig.json",
+        "syntaxes/jsonata-configuration.json"
+      ],
+      "rules": {
+        "json/*": ["error", "allowComments"]
+      }
+    }
+  ],
   "ignorePatterns": [
     "out",
     "dist",
