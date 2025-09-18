@@ -1,21 +1,44 @@
 {
-  "name": "vscode-language-jsonata",
-  "displayName": "VSCode Language JSONata",
-  "description": "Language support for JSONata",
+  "name": "vscode-language-jsonata-enhanced",
+  "displayName": "VSCode Language JSONata Enhanced",
+  "description": "Language support for JSONata with enhanced support for syntax highlighting - A fork of the original vscode-language-jsonata extension",
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.64.0"
   },
   "repository": {
-    "url": "https://github.com/bigbug/vscode-language-jsonata"
+    "type": "git",
+    "url": "https://github.com/danmactough/vscode-language-jsonata.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danmactough/vscode-language-jsonata/issues"
   },
   "author": {
-    "name": "@bigbug",
-    "url": "https://github.com/bigbug"
+    "name": "Dan MacTough",
+    "url": "https://github.com/danmactough"
   },
-  "publisher": "bigbug",
+  "contributors": [
+    {
+      "name": "@bigbug",
+      "url": "https://github.com/bigbug"
+    }
+  ],
+  "homepage": "https://github.com/danmactough/vscode-language-jsonata",
+  "license": "MIT",
+  "icon": "images/jsonata-button.png",
+  "publisher": "danmactough",
   "categories": [
+    "Programming Languages",
+    "Linters",
     "Other"
+  ],
+  "keywords": [
+    "jsonata",
+    "autocomplete",
+    "syntax",
+    "highlight",
+    "notebook",
+    "linter"
   ],
   "activationEvents": [
     "onNotebook:jsonata-book",
@@ -61,7 +84,8 @@
     "package": "webpack --mode production --devtool hidden-source-map",
     "test-compile": "tsc -p . --outDir out",
     "pretest": "npm run test-compile && npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
+    "lint": "eslint --ext ts,json .",
+    "lint:fix": "eslint --ext ts,json --fix .",
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
@@ -76,6 +100,7 @@
     "@vscode/test-web": "*",
     "eslint": "^7.32.0",
     "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-json": "^4.0.1",
     "glob": "^7.1.7",
     "mocha": "^9.1.1",
     "ts-loader": "^9.2.5",
@@ -86,7 +111,7 @@
   "dependencies": {
     "@types/lodash": "^4.14.178",
     "json-stringify-safe": "^5.0.1",
-    "jsonata": "^2.0.3",
+    "jsonata": "^2.1.0",
     "lodash": "^4.17.21",
     "node-fetch": "^3.3.2",
     "vscode-uri": "^3.0.3",

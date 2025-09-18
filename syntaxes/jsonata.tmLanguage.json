@@ -1,223 +1,511 @@
 {
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "scopeName": "source.jsonata",
+  "name": "JSONata",
+  "fileTypes": ["jsonata"],
   "foldingStartMarker": "\\{\\s*$",
   "foldingStopMarker": "^\\s*\\}",
-  "patterns": [
-    {
-      "include": "#value"
-    }
-  ],
+  "patterns": [{ "include": "#value" }, { "include": "#path" }],
   "repository": {
-    "expression": {
-      "name": "meta.selector.jsonata",
+    "value": {
       "patterns": [
-        {
-          "match": "(\\$|\\.)",
-          "name": "keyword.other.selector.jsonata"
-        },
-        {
-          "match": "(\\+|-|\\*|/|&)",
-          "name": "keyword.other.math.jsonata"
-        }
-      ]
-    },
-    "array": {
-      "begin": "\\[",
-      "beginCaptures": {
-        "0": {
-          "name": "punctuation.definition.array.begin.jsonata"
-        }
-      },
-      "end": "\\]",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.array.end.jsonata"
-        }
-      },
-      "name": "meta.structure.array.jsonata",
-      "patterns": [
-        {
-          "include": "#value"
-        },
-        {
-          "match": ",",
-          "name": "punctuation.separator.array.jsonata"
-        },
-        {
-          "match": "[^\\s\\]]",
-          "name": "invalid.illegal.expected-array-separator.jsonata"
-        }
+        { "include": "#comments" },
+        { "include": "#selectors" },
+        { "include": "#strings" },
+        { "include": "#regex" },
+        { "include": "#numbers" },
+        { "include": "#keywords" },
+        { "include": "#builtins" },
+        { "include": "#function-calls" },
+        { "include": "#variables" },
+        { "include": "#operators" }
       ]
     },
     "comments": {
       "patterns": [
-        {
-          "begin": "/\\*\\*(?!/)",
-          "captures": {
-            "0": {
-              "name": "punctuation.definition.comment.jsonata"
-            }
-          },
-          "end": "\\*/",
-          "name": "comment.block.documentation.jsonata"
-        },
-        {
-          "begin": "/\\*",
-          "captures": {
-            "0": {
-              "name": "punctuation.definition.comment.jsonata"
-            }
-          },
-          "end": "\\*/",
-          "name": "comment.block.jsonata"
-        },
-        {
-          "captures": {
-            "1": {
-              "name": "punctuation.definition.comment.jsonata"
-            }
-          },
-          "match": "(//).*$\\n?",
-          "name": "comment.line.double-slash.js"
-        }
+        { "name": "comment.block.jsonata", "begin": "/\\*", "end": "\\*/" },
+        { "name": "comment.line.double-slash.jsonata", "match": "//.*$" }
       ]
     },
-    "constant": {
-      "match": "\\b(?:true|false|null)\\b",
-      "name": "constant.language.jsonata"
-    },
-    "number": {
-      "match": "(?x)        # turn on extended mode\n  -?        # an optional minus\n  (?:\n    0       # a zero\n    |       # ...or...\n    [1-9]   # a 1-9 character\n    \\d*     # followed by zero or more digits\n  )\n  (?:\n    (?:\n      \\.    # a period\n      \\d+   # followed by one or more digits\n    )?\n    (?:\n      [eE]  # an e character\n      [+-]? # followed by an option +/-\n      \\d+   # followed by one or more digits\n    )?      # make exponent optional\n  )?        # make decimal portion optional",
-      "name": "constant.numeric.jsonata"
-    },
-    "object": {
-      "begin": "\\{",
-      "beginCaptures": {
-        "0": {
-          "name": "punctuation.definition.dictionary.begin.jsonata"
-        }
-      },
-      "end": "\\}",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.dictionary.end.jsonata"
-        }
-      },
-      "name": "meta.structure.dictionary.jsonata",
+
+    "strings": {
       "patterns": [
         {
-          "comment": "the JSON object key",
-          "include": "#objectkey"
+          "name": "string.quoted.double.jsonata",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [{ "include": "#string-escapes" }]
         },
         {
-          "include": "#comments"
-        },
-        {
-          "begin": ":",
-          "beginCaptures": {
-            "0": {
-              "name": "punctuation.separator.dictionary.key-value.jsonata"
-            }
-          },
-          "end": "(,)|(?=\\})",
-          "endCaptures": {
-            "1": {
-              "name": "punctuation.separator.dictionary.pair.jsonata"
-            }
-          },
-          "name": "meta.structure.dictionary.value.jsonata",
-          "patterns": [
-            {
-              "comment": "the JSON object value",
-              "include": "#value"
-            }
-          ]
-        },
-        {
-          "match": "[^\\s\\}]",
-          "name": "invalid.illegal.expected-dictionary-separator.jsonata"
+          "name": "string.quoted.single.jsonata",
+          "begin": "'",
+          "end": "'",
+          "patterns": [{ "include": "#string-escapes" }]
         }
       ]
     },
-    "string": {
-      "begin": "\"",
+
+    "string-escapes": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.jsonata",
+          "match": "\\\\([\"'\\\\/bfnrt])"
+        },
+        {
+          "name": "constant.character.escape.unicode.jsonata",
+          "match": "\\\\u[0-9A-Fa-f]{4}"
+        }
+      ]
+    },
+
+    "regex": {
+      "begin": "\\/",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.string.begin.jsonata"
         }
       },
-      "end": "\"",
+      "end": "\\/([gimuy]*)",
       "endCaptures": {
         "0": {
           "name": "punctuation.definition.string.end.jsonata"
+        },
+        "1": {
+          "name": "keyword.other.regexp.flag.jsonata"
         }
       },
-      "name": "string.quoted.double.jsonata",
+      "name": "string.regexp.jsonata",
       "patterns": [
         {
-          "include": "#stringcontent"
+          "include": "#regex-anchors"
+        },
+        {
+          "include": "#regex-grouping"
+        },
+        {
+          "include": "#regex-quantifiers"
+        },
+        {
+          "include": "#regex-character-classes"
+        },
+        {
+          "include": "#regex-escapes"
+        },
+        {
+          "include": "#regex-alternation"
         }
       ]
     },
-    "objectkey": {
-      "begin": "\"",
-      "beginCaptures": {
-        "0": {
-          "name": "punctuation.support.type.property-name.begin.jsonata"
-        }
-      },
-      "end": "\"",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.support.type.property-name.end.jsonata"
-        }
-      },
-      "name": "string.jsonata support.type.property-name.jsonata",
+
+    "regex-anchors": {
       "patterns": [
         {
-          "include": "#stringcontent"
+          "match": "\\^",
+          "name": "keyword.other.anchor.regexp.jsonata"
         },
         {
-          "include": "#expression"
+          "match": "\\$",
+          "name": "keyword.other.anchor.regexp.jsonata"
+        },
+        {
+          "match": "\\\\b",
+          "name": "keyword.other.anchor.word-boundary.regexp.jsonata"
+        },
+        {
+          "match": "\\\\B",
+          "name": "keyword.other.anchor.non-word-boundary.regexp.jsonata"
         }
       ]
     },
-    "stringcontent": {
+
+    "regex-grouping": {
       "patterns": [
         {
-          "match": "(?x)                # turn on extended mode\n  \\\\                # a literal backslash\n  (?:               # ...followed by...\n    [\"\\\\/bfnrt]     # one of these characters\n    |               # ...or...\n    u               # a u\n    [0-9a-fA-F]{4}) # and four hex digits",
-          "name": "constant.character.escape.jsonata"
+          "match": "\\(",
+          "name": "punctuation.definition.group.regexp.jsonata"
         },
         {
-          "match": "\\\\.",
-          "name": "invalid.illegal.unrecognized-string-escape.jsonata"
+          "match": "\\)",
+          "name": "punctuation.definition.group.regexp.jsonata"
+        },
+        {
+          "match": "\\?\\:",
+          "name": "keyword.other.non-capturing-group.regexp.jsonata"
+        },
+        {
+          "match": "\\?\\=",
+          "name": "keyword.other.positive-lookahead.regexp.jsonata"
+        },
+        {
+          "match": "\\?\\!",
+          "name": "keyword.other.negative-lookahead.regexp.jsonata"
+        },
+        {
+          "match": "\\?\\<\\=",
+          "name": "keyword.other.positive-lookbehind.regexp.jsonata"
+        },
+        {
+          "match": "\\?\\<\\!",
+          "name": "keyword.other.negative-lookbehind.regexp.jsonata"
         }
       ]
     },
-    "value": {
+
+    "regex-quantifiers": {
       "patterns": [
         {
-          "include": "#comments"
+          "match": "\\*",
+          "name": "keyword.operator.quantifier.regexp.zero-or-more.jsonata"
         },
         {
-          "include": "#constant"
+          "match": "\\+",
+          "name": "keyword.operator.quantifier.regexp.one-or-more.jsonata"
         },
         {
-          "include": "#number"
+          "match": "\\?",
+          "name": "keyword.operator.quantifier.regexp.zero-or-one.jsonata"
         },
         {
-          "include": "#string"
+          "match": "\\{[0-9]+\\}",
+          "name": "keyword.operator.quantifier.regexp.exact.jsonata"
         },
         {
-          "include": "#array"
+          "match": "\\{[0-9]+,\\}",
+          "name": "keyword.operator.quantifier.regexp.min.jsonata"
         },
         {
-          "include": "#object"
-        },
-        {
-          "include": "#expression"
+          "match": "\\{[0-9]+,[0-9]+\\}",
+          "name": "keyword.operator.quantifier.regexp.range.jsonata"
         }
+      ]
+    },
+
+    "regex-character-classes": {
+      "patterns": [
+        {
+          "begin": "\\[",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.character-class.regexp.jsonata"
+            }
+          },
+          "end": "\\]",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.character-class.regexp.jsonata"
+            }
+          },
+          "name": "meta.character-class.regexp.jsonata",
+          "patterns": [
+            {
+              "match": "\\^",
+              "name": "keyword.operator.negation.regexp.jsonata"
+            },
+            {
+              "match": "\\-",
+              "name": "punctuation.separator.range.regexp.jsonata"
+            },
+            {
+              "include": "#regex-escapes"
+            }
+          ]
+        },
+        {
+          "match": "\\\\.|\\\\d|\\\\D|\\\\s|\\\\S|\\\\w|\\\\W",
+          "name": "constant.character.escape.character-class.regexp.jsonata"
+        }
+      ]
+    },
+
+    "regex-escapes": {
+      "patterns": [
+        {
+          "match": "\\\\[0-7]{1,3}",
+          "name": "constant.character.escape.octal.regexp.jsonata"
+        },
+        {
+          "match": "\\\\x[0-9a-fA-F]{2}",
+          "name": "constant.character.escape.hex.regexp.jsonata"
+        },
+        {
+          "match": "\\\\u[0-9a-fA-F]{4}",
+          "name": "constant.character.escape.unicode.regexp.jsonata"
+        },
+        {
+          "match": "\\\\[tnrfv]",
+          "name": "constant.character.escape.control.regexp.jsonata"
+        },
+        {
+          "match": "\\\\[\\\\/.*+?^${}()|\\[\\]]",
+          "name": "constant.character.escape.regexp.jsonata"
+        }
+      ]
+    },
+
+    "regex-alternation": {
+      "patterns": [
+        {
+          "match": "\\|",
+          "name": "keyword.operator.alternation.regexp.jsonata"
+        }
+      ]
+    },
+
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.jsonata",
+          "match": "(?<![A-Za-z0-9_\\$])(?:-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)(?![A-Za-z0-9_])"
+        }
+      ]
+    },
+
+    "keywords": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.jsonata",
+          "match": "(?<![A-Za-z0-9_\\$])(true|false)(?![A-Za-z0-9_])"
+        },
+        {
+          "name": "constant.language.null.jsonata",
+          "match": "(?<![A-Za-z0-9_\\$])null(?![A-Za-z0-9_])"
+        },
+        {
+          "name": "constant.language.undefined.jsonata",
+          "match": "(?<![A-Za-z0-9_\\$])undefined(?![A-Za-z0-9_])"
+        },
+        {
+          "name": "keyword.declaration.function.jsonata",
+          "match": "(?<![A-Za-z0-9_\\$])function(?![A-Za-z0-9_])"
+        }
+      ]
+    },
+
+    "selectors": {
+      "patterns": [
+        {
+          "name": "keyword.other.selector.jsonata",
+          "match": "(\\$(?![^A-Za-z_\\.])|\\.)"
+        }
+      ]
+    },
+
+    "variables": {
+      "patterns": [
+        {
+          "name": "meta.definition.variable.jsonata",
+          "match": "\\$([A-Za-z_][A-Za-z0-9_]*)(?!\\()\\s*:=\\s*",
+          "captures": {
+            "1": { "name": "variable.other.readwrite.jsonata" }
+          }
+        },
+        {
+          "name": "variable.other.jsonata",
+          "match": "(?<=\\$)([A-Za-z_][A-Za-z0-9_]*)(?!\\()",
+          "captures": {
+            "1": { "name": "variable.other.jsonata" }
+          }
+        },
+        {
+          "name": "meta.variable.member.jsonata",
+          "match": "(?<=\\.)([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "variable.member.jsonata" }
+          }
+        }
+      ]
+    },
+
+    "builtins": {
+      "patterns": [
+        {
+          "name": "entity.name.function.builtin.jsonata",
+          "match": "$(?<=[A-Za-z0-9_\\.]?\\$)(abs|append|assert|average|base64decode|base64encode|boolean|ceil|contains|count|decodeUrl|decodeUrlComponent|distinct|each|encodeUrl|encodeUrlComponent|error|eval|exists|filter|floor|formatBase|formatInteger|formatNumber|fromMillis|join|keys|length|lookup|lowercase|map|match|max|merge|millis|min|not|now|number|pad|parseInteger|power|random|reduce|replace|reverse|round|shuffle|sift|sift|single|sort|split|spread|sqrt|string|substring|substringAfter|substringBefore|sum|toMillis|trim|type|uppercase|zip)(?![A-Za-z0-9_])"
+        }
+      ]
+    },
+
+    "function-calls": {
+      "patterns": [
+        {
+          "name": "meta.function-call.jsonata",
+          "begin": "(\\$?[A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
+          "beginCaptures": {
+            "1": { "name": "entity.name.function.jsonata" },
+            "2": { "name": "punctuation.definition.parameters.begin.jsonata" }
+          },
+          "end": "(\\))",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.parameters.end.jsonata" }
+          },
+          "patterns": [
+            { "include": "#value" },
+            {
+              "name": "punctuation.separator.parameters.jsonata",
+              "match": ","
+            }
+          ]
+        }
+      ]
+    },
+
+    "operators": {
+      "patterns": [
+        { "name": "keyword.operator.arithmetic.jsonata", "match": "[+\\-*/%]" },
+        {
+          "name": "keyword.operator.comparison.jsonata",
+          "match": "(?:<=|>=|!=|=|<|>)"
+        },
+        {
+          "name": "keyword.operator.boolean.jsonata",
+          "match": "(?<![A-Za-z0-9_\\$])(and|or|in|not)(?![A-Za-z0-9_])"
+        },
+        { "name": "keyword.operator.arithmetic.concat.jsonata", "match": "&" },
+        { "name": "keyword.operator.other.range.jsonata", "match": "\\.\\." },
+        { "name": "keyword.operator.assignment.jsonata", "match": ":=" },
+        { "name": "keyword.operator.other.pipe.jsonata", "match": "~>" },
+        { "name": "keyword.operator.other.transform.jsonata", "match": "\\|" },
+        {
+          "name": "keyword.operator.logical.nullish-coalescing.jsonata",
+          "match": "\\?\\?"
+        },
+        { "name": "keyword.operator.logical.default.jsonata", "match": "\\?:" },
+        { "name": "keyword.operator.ternary.jsonata", "match": "\\?|:" }
+      ]
+    },
+
+    "path": {
+      "patterns": [
+        {
+          "name": "variable.other.member.jsonata",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*"
+        },
+        {
+          "name": "punctuation.accessor.dot.jsonata",
+          "match": "\\."
+        },
+        {
+          "name": "constant.other.wildcard.jsonata",
+          "match": "\\*"
+        },
+        {
+          "name": "meta.bracket.accessor.jsonata",
+          "begin": "\\[",
+          "beginCaptures": {
+            "0": { "name": "punctuation.section.brackets.begin.jsonata" }
+          },
+          "end": "\\]",
+          "endCaptures": {
+            "0": { "name": "punctuation.section.brackets.end.jsonata" }
+          },
+          "patterns": [
+            { "include": "#value" },
+            {
+              "name": "punctuation.separator.array.jsonata",
+              "match": ","
+            }
+          ]
+        },
+        {
+          "name": "meta.group.parens.jsonata",
+          "begin": "\\(",
+          "beginCaptures": {
+            "0": { "name": "punctuation.section.group.begin.jsonata" }
+          },
+          "end": "\\)",
+          "endCaptures": {
+            "0": { "name": "punctuation.section.group.end.jsonata" }
+          },
+          "patterns": [{ "include": "#value" }]
+        },
+        {
+          "name": "meta.object.jsonata",
+          "begin": "(?<!\\$)\\{",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.brace.begin.jsonata" }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.brace.end.jsonata" }
+          },
+          "patterns": [
+            { "include": "#value" },
+            {
+              "name": "punctuation.separator.key-value.jsonata",
+              "match": ":"
+            },
+            {
+              "name": "punctuation.separator.object.jsonata",
+              "match": ","
+            }
+          ]
+        },
+        {
+          "name": "meta.array.jsonata",
+          "begin": "\\[",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.array.begin.jsonata" }
+          },
+          "end": "\\]",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.array.end.jsonata" }
+          },
+          "patterns": [
+            { "include": "#value" },
+            {
+              "name": "punctuation.separator.array.jsonata",
+              "match": ","
+            }
+          ]
+        },
+
+        {
+          "name": "meta.lambda.jsonata",
+          "begin": "(?<![A-Za-z0-9_\\$])function\\s*\\(",
+          "beginCaptures": {
+            "0": { "name": "keyword.declaration.function.jsonata" }
+          },
+          "end": "\\)",
+          "endCaptures": {
+            "0": { "name": "punctuation.section.parameters.end.jsonata" }
+          },
+          "patterns": [
+            { "include": "#comments" },
+            {
+              "name": "variable.parameter.jsonata",
+              "match": "\\$[A-Za-z_][A-Za-z0-9_]*"
+            },
+            { "include": "#regex" },
+            {
+              "name": "punctuation.separator.parameters.jsonata",
+              "match": ","
+            }
+          ]
+        },
+        {
+          "name": "meta.block.jsonata",
+          "begin": "(?<!\\$)\\{",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.block.begin.jsonata" }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.block.end.jsonata" }
+          },
+          "patterns": [
+            { "include": "#value" },
+            { "include": "#path" },
+            {
+              "name": "punctuation.terminator.statement.jsonata",
+              "match": ";"
+            }
+          ]
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.separator.comma.jsonata", "match": "," }
       ]
     }
   }

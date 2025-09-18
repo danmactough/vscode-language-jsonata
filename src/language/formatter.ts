@@ -29,8 +29,6 @@ class Formatter {
   }
 
   private evaluate(obj: jsonata.ExprNode) {
-    // this.rest(obj);
-    // return;
     if (obj.type === 'unary' && obj.value === '{') {
       this.evaluteObj(obj);
     } else if (obj.type === 'unary' && obj.value === '[') {
@@ -49,6 +47,7 @@ class Formatter {
       this.evaluateBinary(obj);
     } else if (obj.type === 'name') {
       this.evaluateName(obj);
+      // @ts-ignore
     } else if (obj.type === 'path') {
       this.evaluatePath(obj);
     } else if (obj.type === 'block') {
@@ -57,16 +56,20 @@ class Formatter {
       this.evaluateWildcard(obj);
     } else if (obj.type === 'parent') {
       this.evaluateParent(obj);
+      // @ts-ignore
     } else if (obj.type === 'apply') {
       this.evaluateApply(obj);
+      // @ts-ignore
     } else if (obj.type === 'bind') {
       this.evaluateBind(obj);
     } else if (obj.type === 'condition') {
       this.evaluateCondition(obj);
     } else if (obj.type === 'function') {
       this.evaluateFunction(obj);
+      // @ts-ignore
     } else if (obj.type === 'regex') {
       this.evaluateRegex(obj);
+      // @ts-ignore
     } else if (obj.type === 'filter') {
       this.evaluateFilter(obj);
     } else {
@@ -93,6 +96,7 @@ class Formatter {
   private evaluteObj(obj: jsonata.ExprNode) {
     this.p('{');
     this.i();
+    // @ts-ignore
     obj.lhs?.forEach((e, i, a) => {
       this.p('\n');
       // @ts-ignore
