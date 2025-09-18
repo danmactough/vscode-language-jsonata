@@ -1,7 +1,7 @@
 {
   "name": "vscode-language-jsonata-enhanced",
   "displayName": "VSCode Language JSONata Enhanced",
-  "description": "Language support for JSONata with enhanced support for syntax highlighting - A fork of the original vscode-language-jsonata extension",
+  "description": "Language support for JSONata with enhanced support for syntax highlighting and template literals - A fork of the original vscode-language-jsonata extension",
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.64.0"
@@ -61,6 +61,20 @@
         "language": "jsonata",
         "scopeName": "source.jsonata",
         "path": "./syntaxes/jsonata.tmLanguage.json"
+      },
+      {
+        "scopeName": "jsonata-js-template-literal-injection.inline",
+        "path": "./syntaxes/jsonata-js-template-literal-injection.tmLanguage.json",
+        "injectTo": [
+          "source.js",
+          "source.jsx",
+          "source.ts",
+          "source.tsx",
+          "source.vue"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.jsonata": "jsonata"
+        }
       }
     ],
     "notebooks": [
