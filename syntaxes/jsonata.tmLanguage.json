@@ -23,8 +23,7 @@
     },
     "comments": {
       "patterns": [
-        { "name": "comment.block.jsonata", "begin": "/\\*", "end": "\\*/" },
-        { "name": "comment.line.double-slash.jsonata", "match": "//.*$" }
+        { "name": "comment.block.jsonata", "begin": "/\\*", "end": "\\*/" }
       ]
     },
 
