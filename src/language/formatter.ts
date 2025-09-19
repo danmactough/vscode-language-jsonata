@@ -245,7 +245,10 @@ class Formatter {
   }
 
   private evaluateRegex(obj: jsonata.ExprNode) {
-    this.p(obj.value.toString());
+    // Remove the g from the regex string
+    // JSONata AST parser adds the g flag to the regex string for evaluation
+    // But it's not valid JSONata syntax
+    this.p(obj.value.toString().replace(/(\/.*?)g(.*$)/, '$1$2'));
   }
 
   private evaluateBinary(obj: jsonata.ExprNode) {
