@@ -347,7 +347,7 @@ class CommentPreservingFormatter {
   }
 
   private extractComments(): void {
-    const commentRegex = /(\/\*.*?\*\/)/gs;
+    const commentRegex = /(\/\*{1,2}.*?\*\/)/gs;
     const whitespaceExceptNewlineRegex = /[^\S\n]/;
     const whitespaceRegex = /\s/;
     let match;
@@ -417,6 +417,38 @@ class CommentPreservingFormatter {
     }
   }
 
+  private static reindentComments(commentText: string, indent: number): string {
+    if (/\n/.test(commentText)) {
+      // eslint-disable-next-line no-param-reassign
+      commentText = commentText
+        .replace(/(^\/\*{1,2})\s*/, '$1\n')
+        .replace(/\s*(\*\/$)/, '\n$1');
+      // +3 for the comment marker and the space if there is no * on the line
+      // otherwise +1 to line up the *
+      const commentTextLines = commentText.split(/\n\s*/);
+      // Skipping the /* and */, do any lines start with *?
+      const hasStar = commentTextLines
+        .slice(1, -1)
+        .some((line) => line.startsWith('*'));
+      // eslint-disable-next-line no-param-reassign
+      commentText = commentTextLines
+        .map((line, index) => {
+          if (index === 0) {
+            return line;
+          }
+          if (line.startsWith('*')) {
+            return ' '.repeat(indent + 1) + line;
+            // If any lines start with *, we want add one to this line that is missing the *
+          } if (hasStar) {
+            return `${' '.repeat(indent + 1)}* ${line}`;
+          }
+          return ' '.repeat(indent + 3) + line;
+        })
+        .join('\n');
+    }
+    return commentText;
+  }
+
   private reinsertCommentsWithPatternMatching(formattedCode: string): string {
     // eslint-disable-next-line no-restricted-syntax
     for (const [anchor, comments] of this.comments) {
@@ -443,6 +475,8 @@ class CommentPreservingFormatter {
         commentText = comments.map((c) => c.text).join(' ');
         front = formattedCode.slice(0, insertPosition);
         back = formattedCode.slice(insertPosition);
+        const indent = front.match(/\n([^\n]*?)$/s)?.[1].length || 0;
+        commentText = CommentPreservingFormatter.reindentComments(commentText, indent);
         if (/[\S]$/.test(front) && /^[^\S]/s.test(back)) {
           front += ' ';
         }
@@ -450,6 +484,7 @@ class CommentPreservingFormatter {
         commentText = comments.map((c) => c.text).join('\n');
         front = formattedCode.slice(0, insertPosition);
         back = formattedCode.slice(insertPosition);
+        commentText = CommentPreservingFormatter.reindentComments(commentText, 0);
         if (/[^\n]$/.test(front)) {
           front += '\n';
         }
