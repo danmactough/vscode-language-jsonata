@@ -8,6 +8,7 @@ import {
   TextDocument,
   TextEdit,
   window,
+  workspace,
 } from 'vscode';
 
 class Formatter {
@@ -509,6 +510,11 @@ implements DocumentFormattingEditProvider {
     // options: FormattingOptions,
     // token: CancellationToken,
   ): ProviderResult<TextEdit[]> {
+    const config = workspace.getConfiguration('jsonata');
+    if (!config.formatterEnabled) {
+      return undefined;
+    }
+
     try {
       const code = document.getText();
       const formatted = new CommentPreservingFormatter(code).format();
