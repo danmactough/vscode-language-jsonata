@@ -1,7 +1,13 @@
 // eslint-disable-next-line max-classes-per-file
 import jsonata = require('jsonata');
 import {
-  DocumentFormattingEditProvider, Position, ProviderResult, Range, TextDocument, TextEdit, window,
+  DocumentFormattingEditProvider,
+  Position,
+  ProviderResult,
+  Range,
+  TextDocument,
+  TextEdit,
+  window,
 } from 'vscode';
 
 class Formatter {
@@ -111,7 +117,7 @@ class Formatter {
     this.p('}');
   }
 
-  private evaluateArray(obj:jsonata.ExprNode) {
+  private evaluateArray(obj: jsonata.ExprNode) {
     if (obj.expressions?.length === 1) {
       this.p('[');
       this.evaluate(obj.expressions[0]);
@@ -273,7 +279,7 @@ class Formatter {
     this.p(']');
   }
 
-  private evaluateApply(obj:jsonata.ExprNode) {
+  private evaluateApply(obj: jsonata.ExprNode) {
     // @ts-ignore
     this.evaluate(obj.lhs);
     this.p(` ${obj.value} `);
@@ -295,7 +301,208 @@ class Formatter {
   }
 }
 
-export default class JSONataDocumentFormatter implements DocumentFormattingEditProvider {
+interface Comment {
+  text: string;
+  type: 'inline' | 'standalone';
+}
+
+class CommentPreservingFormatter {
+  private originalCode: string;
+
+  private comments: Map<string, Comment[]> = new Map();
+
+  private static readonly REGEX_SPECIAL_CHARS: readonly string[] = [
+    '^',
+    '$',
+    '\\',
+    '.',
+    '*',
+    '+',
+    '?',
+    '(',
+    ')',
+    '[',
+    ']',
+    '{',
+    '}',
+    '|',
+  ] as const;
+
+  constructor(code: string) {
+    this.originalCode = code;
+    this.extractComments();
+  }
+
+  private regexStringCache: Map<string, string> = new Map();
+
+  private getRegexStringForAnchorChar(anchorChar: string): string {
+    const cached = this.regexStringCache.get(anchorChar);
+    if (cached) {
+      return cached;
+    }
+    const needsEscape = CommentPreservingFormatter.REGEX_SPECIAL_CHARS.includes(anchorChar);
+    const regexString = needsEscape ? `\\${anchorChar}` : anchorChar;
+    this.regexStringCache.set(anchorChar, regexString);
+    return regexString;
+  }
+
+  private extractComments(): void {
+    const commentRegex = /(\/\*{1,2}.*?\*\/)/gs;
+    const whitespaceExceptNewlineRegex = /[^\S\n]/;
+    const whitespaceRegex = /\s/;
+    let match;
+
+    // eslint-disable-next-line no-cond-assign
+    while ((match = commentRegex.exec(this.originalCode)) !== null) {
+      const commentText = match[0];
+      let type: Comment['type'];
+      let i = 0;
+      let j = 0;
+      let previousChar;
+      let nextChar;
+      let previousNonWhitespaceChar = ' ';
+
+      do {
+        i += 1;
+        previousChar = match.input.charAt(match.index - i);
+      } while (whitespaceExceptNewlineRegex.test(previousChar));
+
+      if (previousChar === '\n') {
+        let start = match.index - i;
+        while (start > 0 && whitespaceRegex.test(match.input.charAt(start))) {
+          start -= 1;
+        }
+        previousNonWhitespaceChar = match.input.charAt(start);
+      } else if (/\S/.test(previousChar)) {
+        previousNonWhitespaceChar = previousChar;
+      }
+
+      do {
+        nextChar = match.input.charAt(commentRegex.lastIndex + j);
+        j += 1;
+      } while (whitespaceExceptNewlineRegex.test(nextChar));
+
+      const anchorChar: string = previousChar === '\n' ? previousNonWhitespaceChar : previousChar;
+
+      if (previousChar === '\n' && nextChar === '\n') {
+        type = 'standalone';
+      } else {
+        type = 'inline';
+      }
+
+      const re = new RegExp(this.getRegexStringForAnchorChar(anchorChar), 'g');
+      const ct = (this.originalCode.slice(0, match.index).match(re) || [])
+        .length;
+      const slug = anchorChar === ' ' ? ' \0-\0-0' : `${anchorChar}\0-\0-${ct}`;
+      const comments = this.comments.get(slug) || [];
+      comments.push({ text: commentText, type });
+      this.comments.set(slug, comments);
+    }
+  }
+
+  public format(): string {
+    try {
+      const formatter = new Formatter(this.originalCode);
+      let code = formatter.code();
+
+      // If no comments, skip reinserting comments
+      if (this.comments.size > 0) {
+        code = this.reinsertCommentsWithPatternMatching(code);
+      }
+      return code;
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      window.showErrorMessage(`Comment reinsertion failed: ${errorMessage}`);
+      return this.originalCode;
+    }
+  }
+
+  private static reindentComments(commentText: string, indent: number): string {
+    if (/\n/.test(commentText)) {
+      // eslint-disable-next-line no-param-reassign
+      commentText = commentText
+        .replace(/(^\/\*{1,2})\s*/, '$1\n')
+        .replace(/\s*(\*\/$)/, '\n$1');
+      // +3 for the comment marker and the space if there is no * on the line
+      // otherwise +1 to line up the *
+      const commentTextLines = commentText.split(/\n\s*/);
+      // Skipping the /* and */, do any lines start with *?
+      const hasStar = commentTextLines
+        .slice(1, -1)
+        .some((line) => line.startsWith('*'));
+      // eslint-disable-next-line no-param-reassign
+      commentText = commentTextLines
+        .map((line, index) => {
+          if (index === 0) {
+            return line;
+          }
+          if (line.startsWith('*')) {
+            return ' '.repeat(indent + 1) + line;
+            // If any lines start with *, we want add one to this line that is missing the *
+          } if (hasStar) {
+            return `${' '.repeat(indent + 1)}* ${line}`;
+          }
+          return ' '.repeat(indent + 3) + line;
+        })
+        .join('\n');
+    }
+    return commentText;
+  }
+
+  private reinsertCommentsWithPatternMatching(formattedCode: string): string {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const [anchor, comments] of this.comments) {
+      const [anchorChar, ct] = anchor.split('\0-\0-');
+      const re = new RegExp(
+        `^(?:[^${this.getRegexStringForAnchorChar(anchorChar)}]*?${this.getRegexStringForAnchorChar(anchorChar)}){${ct}}`,
+        'gs',
+      );
+      const doesMatch = anchorChar === ' ' ? true : re.test(formattedCode);
+      if (!doesMatch) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      // Prepare comment text based on type
+      const insertPosition = anchorChar === ' ' ? 0 : re.lastIndex;
+      let commentText: string;
+      let front: string;
+      let back: string;
+      // All comments will have the same type
+      const isInline = comments[0].type === 'inline';
+
+      if (isInline) {
+        commentText = comments.map((c) => c.text).join(' ');
+        front = formattedCode.slice(0, insertPosition);
+        back = formattedCode.slice(insertPosition);
+        const indent = front.match(/\n([^\n]*?)$/s)?.[1].length || 0;
+        commentText = CommentPreservingFormatter.reindentComments(commentText, indent);
+        if (/[\S]$/.test(front) && /^[^\S]/s.test(back)) {
+          front += ' ';
+        }
+      } else {
+        commentText = comments.map((c) => c.text).join('\n');
+        front = formattedCode.slice(0, insertPosition);
+        back = formattedCode.slice(insertPosition);
+        commentText = CommentPreservingFormatter.reindentComments(commentText, 0);
+        if (/[^\n]$/.test(front)) {
+          front += '\n';
+        }
+        if (/^[^\n]/.test(back)) {
+          back = `\n${back}`;
+        }
+      }
+
+      // eslint-disable-next-line no-param-reassign
+      formattedCode = front + commentText + back;
+    }
+
+    return formattedCode;
+  }
+}
+
+export default class JSONataDocumentFormatter
+implements DocumentFormattingEditProvider {
   // eslint-disable-next-line class-methods-use-this
   provideDocumentFormattingEdits(
     document: TextDocument,
@@ -304,24 +511,30 @@ export default class JSONataDocumentFormatter implements DocumentFormattingEditP
   ): ProviderResult<TextEdit[]> {
     try {
       const code = document.getText();
-      const formatted = new Formatter(code).code();
-      console.log(formatted);
+      const formatted = new CommentPreservingFormatter(code).format();
 
       const edit: TextEdit[] = [];
-      edit.push(new TextEdit(
-        new Range(
-          new Position(0, 0),
-          new Position(document.lineCount - 1, document.lineAt(document.lineCount - 1).text.length),
+      edit.push(
+        new TextEdit(
+          new Range(
+            new Position(0, 0),
+            new Position(
+              document.lineCount - 1,
+              document.lineAt(document.lineCount - 1).text.length,
+            ),
+          ),
+          formatted,
         ),
-        formatted,
-      ));
+      );
       return edit;
     } catch (e: any) {
       console.log(e);
       // (parser error) don't bubble up as a pot. unhandled thenable promise;
       // explicitly return "no change" instead.
       // show error message
-      window.showErrorMessage(`${e.name} (@${e.location.start.line}:${e.location.start.column}): ${e.message}`);
+      window.showErrorMessage(
+        `${e.name} (@${e.location.start.line}:${e.location.start.column}): ${e.message}`,
+      );
       return undefined;
     }
   }
