@@ -494,7 +494,8 @@ class CommentPreservingFormatter {
         commentText = comments.map((c) => c.text).join('\n');
         front = formattedCode.slice(0, insertPosition);
         back = formattedCode.slice(insertPosition);
-        commentText = CommentPreservingFormatter.reindentComments(commentText, 0);
+        const indent = back.match(/^\n?( *)/s)?.[1].length || 0;
+        commentText = ' '.repeat(indent) + CommentPreservingFormatter.reindentComments(commentText, indent);
         if (/[^\n]$/.test(front)) {
           front += '\n';
         }
