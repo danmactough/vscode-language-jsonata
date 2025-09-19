@@ -74,7 +74,17 @@
           }
         ]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "JSONata Enhanced",
+      "properties": {
+        "jsonata.formatterEnabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Enable JSONata formatter (experimental)"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
