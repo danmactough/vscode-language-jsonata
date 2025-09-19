@@ -272,10 +272,17 @@ class Formatter {
       // @ts-ignore
       this.evaluate(obj.steps[i]);
 
-      // @ts-ignore
-      if (obj.steps[i].stages) {
-        // @ts-ignore
-        obj.steps[i].stages?.forEach((e) => this.evaluate(e));
+      if (obj.steps?.[i]?.stages) {
+        // JSONata AST parser creates duplicate stages for ?? and ?: operators
+        // so we need to make sure we only evaluate each stage once
+        const seenStageIds = new Set<string>();
+        obj.steps?.[i]?.stages?.forEach((stage) => {
+          const slug = `${stage.type}-${stage.position}`;
+          if (!seenStageIds.has(slug)) {
+            seenStageIds.add(slug);
+            this.evaluate(stage);
+          }
+        });
       }
     }
     // @ts-ignore
