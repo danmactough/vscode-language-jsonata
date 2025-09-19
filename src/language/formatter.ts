@@ -18,7 +18,10 @@ class Formatter {
 
   private formattedCode: string = '';
 
+  private originalCode: string;
+
   constructor(code: string) {
+    this.originalCode = code;
     const obj = jsonata(code).ast();
     this.evaluate(obj);
 
@@ -153,7 +156,13 @@ class Formatter {
     this.p('\n)');
   }
 
+  // eslint-disable-next-line consistent-return
   private evaluateCondition(obj: jsonata.ExprNode) {
+    const operator = this.originalCode.slice((obj.position ?? 0) - 2, obj.position);
+    if (operator === '??' || operator === '?:') {
+      // @ts-ignore
+      return this.evaluateBinary({ lhs: obj.then, rhs: obj.else, value: operator });
+    }
     // @ts-ignore
     this.evaluate(obj.condition);
     this.i();
