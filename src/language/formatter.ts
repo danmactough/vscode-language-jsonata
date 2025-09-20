@@ -10,6 +10,7 @@ import {
   window,
   workspace,
 } from 'vscode';
+import { deepEqualWithFunctions } from '../util';
 
 class Formatter {
   private indent = 0;
@@ -18,14 +19,15 @@ class Formatter {
 
   private formattedCode: string = '';
 
-  constructor(code: string) {
-    const obj = jsonata(code).ast();
-    this.evaluate(obj);
+  private originalCode: string;
 
-    if (this.strip(code) !== this.strip(this.formattedCode)) {
-      // window.showErrorMessage('Error on formatting! Input and output are different!');
-      // throw new Error('Error on formatting! Input and output are different!');
-    }
+  private originalAst: jsonata.ExprNode;
+
+  constructor(code: string) {
+    this.originalCode = code;
+    const obj = jsonata(code).ast();
+    this.originalAst = obj;
+    this.evaluate(obj);
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -82,6 +84,12 @@ class Formatter {
     } else {
       this.rest(obj);
     }
+
+    // @ts-ignore
+    // if the keepArray flag is set, add an empty array
+    if (obj.keepArray) {
+      this.p('[]');
+    }
   }
 
   private rest(obj: jsonata.ExprNode) {
@@ -101,6 +109,11 @@ class Formatter {
   }
 
   private evaluteObj(obj: jsonata.ExprNode) {
+    // @ts-ignore
+    if (obj.lhs?.length === 0) {
+      this.p('{}');
+      return;
+    }
     this.p('{');
     this.i();
     // @ts-ignore
@@ -119,7 +132,24 @@ class Formatter {
   }
 
   private evaluateArray(obj: jsonata.ExprNode) {
+    if (obj.expressions?.length === 0) {
+      this.p('[]');
+      return;
+    }
     if (obj.expressions?.length === 1) {
+      // @ts-ignore
+      if (obj.expressions[0].type === 'unary' && obj.expressions[0].value === '{' && obj.expressions[0]?.lhs?.length === 0) {
+        this.p('[{}]');
+        return;
+      }
+      if (obj.expressions[0].type === 'unary' && obj.expressions[0].value === '[' && obj.expressions[0]?.expressions?.length === 0) {
+        this.p('[[]]');
+        return;
+      }
+      if (obj.expressions[0].type === 'block' && obj.expressions[0]?.expressions?.length === 0) {
+        this.p('[()]');
+        return;
+      }
       this.p('[');
       this.evaluate(obj.expressions[0]);
       this.p(']');
@@ -137,23 +167,42 @@ class Formatter {
   }
 
   private evaluateBlock(obj: jsonata.ExprNode) {
-    if (obj.expressions?.length === 1) {
+    if (obj.expressions?.length === 0) {
+      this.p('()');
+    } else if (obj.expressions?.length === 1) {
       this.p('(');
       this.evaluate(obj.expressions[0]);
       this.p(')');
-      return;
+    } else {
+      this.i();
+      this.p('(\n');
+      obj.expressions?.forEach((e, i, a) => {
+        this.evaluate(e);
+        if (i + 1 !== a.length) this.p(';\n');
+      });
+      this.d();
+      this.p('\n)');
     }
-    this.i();
-    this.p('(\n');
-    obj.expressions?.forEach((e, i, a) => {
-      this.evaluate(e);
-      if (i + 1 !== a.length) this.p(';\n');
-    });
-    this.d();
-    this.p('\n)');
+    // @ts-ignore
+    if (obj.predicate?.length) {
+      // @ts-ignore
+      obj.predicate?.forEach((e) => {
+        this.evaluate(e);
+      });
+    }
+    // @ts-ignore
+    if (obj.keepArray) {
+      this.p('[]');
+    }
   }
 
+  // eslint-disable-next-line consistent-return
   private evaluateCondition(obj: jsonata.ExprNode) {
+    const operator = this.originalCode.slice((obj.position ?? 0) - 2, obj.position);
+    if (operator === '??' || operator === '?:') {
+      // @ts-ignore
+      return this.evaluateBinary({ lhs: obj.then, rhs: obj.else, value: operator });
+    }
     // @ts-ignore
     this.evaluate(obj.condition);
     this.i();
@@ -236,7 +285,10 @@ class Formatter {
   }
 
   private evaluateRegex(obj: jsonata.ExprNode) {
-    this.p(obj.value.toString());
+    // Remove the g from the regex string
+    // JSONata AST parser adds the g flag to the regex string for evaluation
+    // But it's not valid JSONata syntax
+    this.p(obj.value.toString().replace(/(\/.*?)g(.*$)/, '$1$2'));
   }
 
   private evaluateBinary(obj: jsonata.ExprNode) {
@@ -260,10 +312,17 @@ class Formatter {
       // @ts-ignore
       this.evaluate(obj.steps[i]);
 
-      // @ts-ignore
-      if (obj.steps[i].stages) {
-        // @ts-ignore
-        obj.steps[i].stages?.forEach((e) => this.evaluate(e));
+      if (obj.steps?.[i]?.stages) {
+        // JSONata AST parser creates duplicate stages for ?? and ?: operators
+        // so we need to make sure we only evaluate each stage once
+        const seenStageIds = new Set<string>();
+        obj.steps?.[i]?.stages?.forEach((stage) => {
+          const slug = `${stage.type}-${stage.position}`;
+          if (!seenStageIds.has(slug)) {
+            seenStageIds.add(slug);
+            this.evaluate(stage);
+          }
+        });
       }
     }
     // @ts-ignore
@@ -299,6 +358,10 @@ class Formatter {
 
   public code() {
     return this.formattedCode;
+  }
+
+  public ast(): jsonata.ExprNode {
+    return this.originalAst;
   }
 }
 
@@ -401,14 +464,20 @@ class CommentPreservingFormatter {
     }
   }
 
-  public format(): string {
+  public format(): string | undefined {
     try {
       const formatter = new Formatter(this.originalCode);
       let code = formatter.code();
 
       // If no comments, skip reinserting comments
       if (this.comments.size > 0) {
+        const originalAst = formatter.ast();
         code = this.reinsertCommentsWithPatternMatching(code);
+        const newAst = jsonata(code).ast();
+        if (!deepEqualWithFunctions(originalAst, newAst)) {
+          window.showErrorMessage('Comment reinsertion failed: AST is different');
+          return undefined;
+        }
       }
       return code;
     } catch (e) {
@@ -485,7 +554,8 @@ class CommentPreservingFormatter {
         commentText = comments.map((c) => c.text).join('\n');
         front = formattedCode.slice(0, insertPosition);
         back = formattedCode.slice(insertPosition);
-        commentText = CommentPreservingFormatter.reindentComments(commentText, 0);
+        const indent = back.match(/^\n?( *)/s)?.[1].length || 0;
+        commentText = ' '.repeat(indent) + CommentPreservingFormatter.reindentComments(commentText, indent);
         if (/[^\n]$/.test(front)) {
           front += '\n';
         }
@@ -529,7 +599,7 @@ implements DocumentFormattingEditProvider {
               document.lineAt(document.lineCount - 1).text.length,
             ),
           ),
-          formatted,
+          formatted ?? code,
         ),
       );
       return edit;
