@@ -10,6 +10,7 @@ import {
   window,
   workspace,
 } from 'vscode';
+import { deepEqualWithFunctions } from '../util';
 
 class Formatter {
   private indent = 0;
@@ -20,15 +21,13 @@ class Formatter {
 
   private originalCode: string;
 
+  private originalAst: jsonata.ExprNode;
+
   constructor(code: string) {
     this.originalCode = code;
     const obj = jsonata(code).ast();
+    this.originalAst = obj;
     this.evaluate(obj);
-
-    if (this.strip(code) !== this.strip(this.formattedCode)) {
-      // window.showErrorMessage('Error on formatting! Input and output are different!');
-      // throw new Error('Error on formatting! Input and output are different!');
-    }
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -360,6 +359,10 @@ class Formatter {
   public code() {
     return this.formattedCode;
   }
+
+  public ast(): jsonata.ExprNode {
+    return this.originalAst;
+  }
 }
 
 interface Comment {
@@ -461,14 +464,20 @@ class CommentPreservingFormatter {
     }
   }
 
-  public format(): string {
+  public format(): string | undefined {
     try {
       const formatter = new Formatter(this.originalCode);
       let code = formatter.code();
 
       // If no comments, skip reinserting comments
       if (this.comments.size > 0) {
+        const originalAst = formatter.ast();
         code = this.reinsertCommentsWithPatternMatching(code);
+        const newAst = jsonata(code).ast();
+        if (!deepEqualWithFunctions(originalAst, newAst)) {
+          window.showErrorMessage('Comment reinsertion failed: AST is different');
+          return undefined;
+        }
       }
       return code;
     } catch (e) {
@@ -590,7 +599,7 @@ implements DocumentFormattingEditProvider {
               document.lineAt(document.lineCount - 1).text.length,
             ),
           ),
-          formatted,
+          formatted ?? code,
         ),
       );
       return edit;
