@@ -85,6 +85,12 @@ class Formatter {
     } else {
       this.rest(obj);
     }
+
+    // @ts-ignore
+    // if the keepArray flag is set, add an empty array
+    if (obj.keepArray) {
+      this.p('[]');
+    }
   }
 
   private rest(obj: jsonata.ExprNode) {
@@ -104,6 +110,11 @@ class Formatter {
   }
 
   private evaluteObj(obj: jsonata.ExprNode) {
+    // @ts-ignore
+    if (obj.lhs?.length === 0) {
+      this.p('{}');
+      return;
+    }
     this.p('{');
     this.i();
     // @ts-ignore
@@ -122,7 +133,24 @@ class Formatter {
   }
 
   private evaluateArray(obj: jsonata.ExprNode) {
+    if (obj.expressions?.length === 0) {
+      this.p('[]');
+      return;
+    }
     if (obj.expressions?.length === 1) {
+      // @ts-ignore
+      if (obj.expressions[0].type === 'unary' && obj.expressions[0].value === '{' && obj.expressions[0]?.lhs?.length === 0) {
+        this.p('[{}]');
+        return;
+      }
+      if (obj.expressions[0].type === 'unary' && obj.expressions[0].value === '[' && obj.expressions[0]?.expressions?.length === 0) {
+        this.p('[[]]');
+        return;
+      }
+      if (obj.expressions[0].type === 'block' && obj.expressions[0]?.expressions?.length === 0) {
+        this.p('[()]');
+        return;
+      }
       this.p('[');
       this.evaluate(obj.expressions[0]);
       this.p(']');
@@ -140,20 +168,33 @@ class Formatter {
   }
 
   private evaluateBlock(obj: jsonata.ExprNode) {
-    if (obj.expressions?.length === 1) {
+    if (obj.expressions?.length === 0) {
+      this.p('()');
+    } else if (obj.expressions?.length === 1) {
       this.p('(');
       this.evaluate(obj.expressions[0]);
       this.p(')');
-      return;
+    } else {
+      this.i();
+      this.p('(\n');
+      obj.expressions?.forEach((e, i, a) => {
+        this.evaluate(e);
+        if (i + 1 !== a.length) this.p(';\n');
+      });
+      this.d();
+      this.p('\n)');
     }
-    this.i();
-    this.p('(\n');
-    obj.expressions?.forEach((e, i, a) => {
-      this.evaluate(e);
-      if (i + 1 !== a.length) this.p(';\n');
-    });
-    this.d();
-    this.p('\n)');
+    // @ts-ignore
+    if (obj.predicate?.length) {
+      // @ts-ignore
+      obj.predicate?.forEach((e) => {
+        this.evaluate(e);
+      });
+    }
+    // @ts-ignore
+    if (obj.keepArray) {
+      this.p('[]');
+    }
   }
 
   // eslint-disable-next-line consistent-return
