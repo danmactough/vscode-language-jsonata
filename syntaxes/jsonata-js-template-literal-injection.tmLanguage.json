@@ -1,0 +1,56 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "injectionSelector": "L:source.js -comment, L:source.ts -comment, L:source.jsx -comment, L:source.tsx -comment, L:source.vue -comment",
+  "name": "JSONata Tagged Template Literals",
+  "patterns": [
+      {
+          "include": "#jsonata-tagged-template"
+      },
+      {
+          "include": "source.ts#template-substitution-element"
+      }
+  ],
+  "repository": {
+    "jsonata-tagged-template": {
+          "begin": "(?i)((?<!\\.)jsonata(<.*?>)?|((?:\\/\\*\\s*)jsonata(<.*?>)?(?:\\s*\\*\\/)))\\s*?(`)",
+          "beginCaptures": {
+              "1": {
+                  "name": "entity.name.function.tagged-template.ts"
+              },
+              "2": {
+                  "patterns": [
+                      {
+                          "include": "source.ts#type-parameters"
+                      }
+                  ]
+              },
+              "3": {
+                  "name": "comment.block"
+              },
+              "4": {
+                  "patterns": [
+                      {
+                          "include": "source.ts#type-parameters"
+                      }
+                  ]
+              },
+              "5": {
+                  "name": "punctuation.definition.string.template.begin.ts"
+              }
+          },
+          "contentName": "meta.embedded.block.jsonata",
+          "end": "(`)",
+          "endCaptures": {
+              "1": {
+                  "name": "punctuation.definition.string.template.end.ts"
+              }
+          },
+          "patterns": [
+            {
+              "include": "source.jsonata"
+            }
+          ]
+      }
+  },
+  "scopeName": "jsonata-js-template-literal-injection.inline"
+}
