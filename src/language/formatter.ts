@@ -7,10 +7,12 @@ import {
   Range,
   TextDocument,
   TextEdit,
+  commands,
   window,
   workspace,
 } from 'vscode';
 import { deepEqualWithFunctions } from '../util';
+import { EmbeddedDocumentProvider } from './EmbeddedDocumentProvider';
 
 class Formatter {
   private indent = 0;
@@ -574,37 +576,51 @@ class CommentPreservingFormatter {
 
 export default class JSONataDocumentFormatter
 implements DocumentFormattingEditProvider {
+  constructor(private virtualDocProvider: EmbeddedDocumentProvider) {
+  }
+
   // eslint-disable-next-line class-methods-use-this
-  provideDocumentFormattingEdits(
+  async provideDocumentFormattingEdits(
     document: TextDocument,
     // options: FormattingOptions,
     // token: CancellationToken,
-  ): ProviderResult<TextEdit[]> {
+  ): Promise<TextEdit[]|undefined> {
     const config = workspace.getConfiguration('jsonata');
     if (!config.formatterEnabled) {
       return undefined;
     }
+    const { languageId } = document;
+    const edit: TextEdit[] = [];
+    const documentText = document.getText();
 
     try {
-      const code = document.getText();
-      const formatted = new CommentPreservingFormatter(code).format();
-
-      const edit: TextEdit[] = [];
-      edit.push(
-        new TextEdit(
-          new Range(
-            new Position(0, 0),
-            new Position(
-              document.lineCount - 1,
-              document.lineAt(document.lineCount - 1).text.length,
+      if (languageId === 'jsonata') {
+        const formatted = new CommentPreservingFormatter(documentText).format();
+        edit.push(
+          new TextEdit(
+            new Range(
+              new Position(0, 0),
+              new Position(
+                document.lineCount - 1,
+                document.lineAt(document.lineCount - 1).text.length,
+              ),
             ),
+            formatted ?? documentText,
           ),
-          formatted ?? code,
-        ),
-      );
+        );
+      } else if (languageId === 'javascript' || languageId === 'typescript' || languageId === 'typescriptreact' || languageId === 'javascriptreact' || languageId === 'vue') {
+        this.findTaggedTemplateLiterals(documentText).map(({ startPos, endPos }) => {
+          const range = new Range(startPos, endPos);
+          const embeddedDocument = document.getText(range);
+          const formattedDocument = new CommentPreservingFormatter(embeddedDocument).format();
+          if (formattedDocument && formattedDocument !== embeddedDocument) {
+            edit.push(new TextEdit(range, formattedDocument));
+          }
+        });
+      }
       return edit;
     } catch (e: any) {
-      console.log(e);
+      console.error(e);
       // (parser error) don't bubble up as a pot. unhandled thenable promise;
       // explicitly return "no change" instead.
       // show error message
@@ -613,5 +629,52 @@ implements DocumentFormattingEditProvider {
       );
       return undefined;
     }
+  }
+
+  /**
+   * Placeholder function to find tagged template literals in the document.
+   * You will need to implement the specific logic for your use case.
+   */
+  private findTaggedTemplateLiterals(
+    text: string,
+  ): { startPos: Position; endPos: Position }[] {
+    const regex = /\s*(?:jsonata|\/\* jsonata \*\/)\s*`(.*?)(?<!(?:\\|(?<!\\)\$))`/gs;
+    const matches: { startPos: Position; endPos: Position; }[] = [];
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const lines = text.slice(0, match.index + match[0].indexOf(match[1]) + match[1].length).split('\n');
+      let startLineOffset = 0;
+      let contentStartOffset = 0;
+      let endLineOffset = 0;
+      let contentEndOffset = 0;
+      let searchEndOffset = match.index + match[0].indexOf(match[1]);
+      while (startLineOffset < lines.length) {
+        const line = lines[startLineOffset];
+        contentStartOffset += line.length + 1; // +1 for the newline
+        contentEndOffset = contentStartOffset;
+        if (contentStartOffset > searchEndOffset) {
+          contentStartOffset = line.length - (contentStartOffset - searchEndOffset) + 1;
+          endLineOffset++;
+          break;
+        }
+        startLineOffset++;
+        endLineOffset++;
+      }
+      searchEndOffset += match[1].length;
+      while (endLineOffset < lines.length) {
+        const line = lines[endLineOffset];
+        contentEndOffset += line.length + 1; // +1 for the newline
+        if (contentEndOffset > searchEndOffset) {
+          contentEndOffset = line.length - (contentEndOffset - searchEndOffset) + 1;
+          break;
+        }
+        endLineOffset++;
+      }
+      matches.push({
+        startPos: new Position(0, 0).translate({ characterDelta: contentStartOffset, lineDelta: startLineOffset }),
+        endPos: new Position(0, 0).translate({ characterDelta: contentEndOffset, lineDelta: endLineOffset }),
+      });
+    }
+    return matches;
   }
 }

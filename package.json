@@ -42,7 +42,12 @@
   ],
   "activationEvents": [
     "onNotebook:jsonata-book",
-    "onLanguage:jsonata"
+    "onLanguage:jsonata",
+    "onLanguage:typescript",
+    "onLanguage:javascript",
+    "onLanguage:typescriptreact",
+    "onLanguage:javascriptreact",
+    "onLanguage:vue"
   ],
   "main": "./dist/extension.js",
   "browser": "./dist/extension.js",
